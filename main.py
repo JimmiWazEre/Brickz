@@ -43,7 +43,7 @@ from os.path import dirname, abspath
 from random import uniform, choice, randint
 
 from modules.leaderboard import load_scores, insert_high_score, display_leaderboard, enter_name
-from modules.powerup import spawn_powerups, handle_powerup_collisions
+# from modules.powerup import spawn_powerups, handle_powerup_collisions
 
 # setup
 pygame.init()
@@ -56,6 +56,7 @@ from modules.assets import init_assets
 init_assets()
 from modules.assets import (
     splash_surf,
+    basic_paddle_surf, ball_surf,
     font, font_large,
     game_music
 )
@@ -67,7 +68,12 @@ game_music.play(loops=-1)
 
 class GameState():
     def __init__(self):
-        pass
+        # app
+        self.app_running = True
+
+        # initialise game state
+        self.reset()
+        self.current_state = "splash"
 
     def reset(self):
         pass
@@ -103,30 +109,69 @@ class ColourBrick(Brick):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
-        
-        """
-        Purple > Blue > Green > Yellow > Orange > Red > [breaks]
-        """
+
+    def apply_crack():
+        pass
+        # play crack sound
+
+    def break_brick():
+        pass
+        # play break sound
 
 class MetalBrick(Brick):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
 
+    def ting():
+        pass
+        # play ting sound
+        # play ting animation (white wave)
+
+    def break_brick():
+        pass
+        # play break sound
+
 class ExplosiveBrick(Brick):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
+    
+    def explode_brick():
+        pass
+        # play explode sound
 
-class ImpactParticle(pygame.sprite.Sprite):
+# particle sprite classes
+
+class Particle(pygame.sprite.Sprite):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
 
-class ExplodeParticle(pygame.sprite.Sprite):
+class ImpactParticle(Particle):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
+        # only for when brick transforms to cracked
+        # colour palette based upon parent brick
+        # small impact point puff
+
+class ExplodeParticle(Particle):
+    def __init__(self, game, *groups):
+        super().__init__(*groups)
+        pass
+        # only for explosive bricks
+        # red/orange colour palette
+        # big explosion, centrally sourced
+
+class BreakParticle(Particle):
+    def __init__(self, game, *groups):
+        super().__init__(*groups)
+        pass
+        # only coloured bricks and metal bricks
+        # larger particles
+        # colour palette based upon parent brick
+        # TBC origin source
 
 # -------------------------------------------------------------
 # draw functions
@@ -139,7 +184,7 @@ def draw_splash():
 
     # start game instructions
     prompt_surf = font.render("Press any key", True, (240, 240, 240))
-    prompt_rect = prompt_surf.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 50))
+    prompt_rect = prompt_surf.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 150))
     show_prompt = (pygame.time.get_ticks() // 500) % 2 == 0 # flips between True and False every half second
     if show_prompt:
         window.blit(prompt_surf, prompt_rect)
