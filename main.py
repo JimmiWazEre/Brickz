@@ -112,6 +112,10 @@ class GameState():
 
         # get_ready state active
         elif self.current_state == "get_ready":
+            if not self.paddle:
+                self.paddle = Paddle(self, self.all_sprites, self.paddle_sprites)
+            if not self.ball:
+                self.ball = Ball(self, self.all_sprites, self.ball_sprites)
             self.paddle.update()
             self.ball.update(self, dt)
 
@@ -163,7 +167,7 @@ class Ball(pygame.sprite.Sprite):
     def launch(self, game):
         self.stuck = False
         game.current_state = "in_play"
-        self.speed = 1000
+        self.speed = 500
         offset = (game.ball.rect.centerx - game.paddle.rect.centerx) / 50
         self.velocity = pygame.Vector2(offset, -1)
         self.velocity = self.velocity.normalize() * self.speed
@@ -176,6 +180,20 @@ class Ball(pygame.sprite.Sprite):
         else:# move the ball
             effective_multiplier = min(game.ball.speed_multiplier, 2.5)
             self.rect.center += self.velocity * effective_multiplier * dt
+            if self.rect.top <= play_area.top:
+                self.velocity.y *= -1
+                self.rect.top = play_area.top
+            elif self.rect.left <= play_area.left:
+                self.velocity.x *= -1
+                self.rect.left = play_area.left
+            elif self.rect.right >= play_area.right:
+                self.velocity.x *= -1
+                self.rect.right = play_area.right
+                print(self.rect.right)
+            elif self.rect.bottom >= play_area.bottom:
+                game.current_state = "get_ready"
+                game.ball = None
+                self.kill()
 
 class Brick(pygame.sprite.Sprite):
     def __init__(self, game, *groups):
@@ -268,6 +286,7 @@ def draw_splash():
 
 def draw_background():
     window.fill("#010523")
+    pygame.draw.rect(window, "#CC00CC", play_area, 3)
 
 def draw_sprites():
     game.all_sprites.draw(window)
@@ -314,7 +333,8 @@ game.window = window
 game.WINDOW_WIDTH = WINDOW_WIDTH
 game.WINDOW_HEIGHT = WINDOW_HEIGHT
 clock = pygame.time.Clock()
-clamp = pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+play_area = pygame.Rect(30, 100, 1220, 590)
+clamp = play_area
 
 # -------------------------------------------------------------
 # game loop
