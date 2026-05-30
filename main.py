@@ -87,7 +87,7 @@ class GameState():
         self.final_score = 0
         self.last_countdown = None
         self.point_start = pygame.time.get_ticks()
-        self.current_state = "point_start"
+        self.current_state = "get_ready"
 
         # leaderboard
         self.entering_name = False
@@ -100,7 +100,6 @@ class GameState():
         self.powerup_sprites.empty()
         self.ball = None
         self.paddle = None
-        self.ai = None
         #self.score = ScoreTracker()
 
     def state(self, dt):
@@ -122,7 +121,6 @@ class GameState():
         # in_play state active
         elif self.current_state == "in_play":
             self.paddle.update()
-            # self.ai.update(dt)
             # self.score.update()
             self.ball.update(self, dt)
             # handle_collisions()
@@ -189,7 +187,6 @@ class Ball(pygame.sprite.Sprite):
             elif self.rect.right >= play_area.right:
                 self.velocity.x *= -1
                 self.rect.right = play_area.right
-                print(self.rect.right)
             elif self.rect.bottom >= play_area.bottom:
                 game.current_state = "get_ready"
                 game.ball = None
