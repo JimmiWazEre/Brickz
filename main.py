@@ -109,17 +109,7 @@ class ColourBrick(Brick):
         """
 
 class MetalBrick(Brick):
-    def __init__(self, game, *groups):def draw_splash():
-    # the background image
-    scaled_splash = pygame.transform.scale(splash_surf, (WINDOW_WIDTH, WINDOW_HEIGHT))
-    window.blit(scaled_splash, (0, 0))
-
-    # start game instructions
-    prompt_surf = font.render("Press any key", True, (240, 240, 240))
-    prompt_rect = prompt_surf.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 50))
-    show_prompt = (pygame.time.get_ticks() // 500) % 2 == 0 # flips between True and False every half second
-    if show_prompt:
-        window.blit(prompt_surf, prompt_rect)
+    def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
 
