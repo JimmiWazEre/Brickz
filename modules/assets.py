@@ -73,4 +73,4 @@ def init_assets():
     # sounds
     game_music = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "midnight_drive.ogg"))
     game_music.set_volume(0.2)
-    game_music.play(loops=-1)
+    #game_music.play(loops=-1)
