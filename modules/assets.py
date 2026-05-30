@@ -31,6 +31,8 @@ ASSETS_DIR = dirname(BASE_DIR)  # points to project root, not modules/
 
 # images
 splash_surf = None
+basic_paddle_surf = None
+ball_surf = None
 
 
 # fonts
@@ -55,6 +57,7 @@ def make_powerup_surf(colour, label):
 
 def init_assets():
     global splash_surf
+    global basic_paddle_surf, ball_surf
     global font, font_large
     global game_music
 
@@ -64,8 +67,10 @@ def init_assets():
 
     # images
     splash_surf = pygame.image.load(join(ASSETS_DIR, "images", "splash.png")).convert()
+    basic_paddle_surf = pygame.image.load(join(ASSETS_DIR, "images", "paddle.png")).convert_alpha()
+    ball_surf = pygame.image.load(join(ASSETS_DIR, "images", "ball.png")).convert_alpha()
 
     # sounds
-    game_music = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "two_left_socks.ogg"))
+    game_music = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "midnight_drive.ogg"))
     game_music.set_volume(0.2)
-    game_music.play(loops=-1)
+    #game_music.play(loops=-1)
