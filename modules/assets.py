@@ -67,8 +67,8 @@ def init_assets():
 
     # images
     splash_surf = pygame.image.load(join(ASSETS_DIR, "images", "splash.png")).convert()
-    basic_paddle_surf = pygame.image.load(join(ASSETS_DIR, "images", "paddle.png")).convert_alpha()
-    ball_surf = pygame.image.load(join(ASSETS_DIR, "images", "ball.png")).convert_alpha()
+    basic_paddle_surf = pygame.transform.scale_by(pygame.image.load(join(ASSETS_DIR, "images", "paddle.png")).convert_alpha(), 1.5)
+    ball_surf = pygame.transform.scale_by(pygame.image.load(join(ASSETS_DIR, "images", "ball.png")).convert_alpha(), 1.5)
 
     # sounds
     game_music = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "midnight_drive.ogg"))

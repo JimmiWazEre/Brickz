@@ -75,6 +75,7 @@ class GameState():
         self.all_sprites = pygame.sprite.Group()
         self.paddle_sprites = pygame.sprite.Group()
         self.ball_sprites = pygame.sprite.Group()
+        self.brick_sprites = pygame.sprite.Group()
         self.powerup_sprites = pygame.sprite.Group()
 
         # initialise game state
@@ -98,6 +99,7 @@ class GameState():
         self.paddle_sprites.empty()
         self.ball_sprites.empty()
         self.powerup_sprites.empty()
+        self.brick_sprites.empty()
         self.ball = None
         self.paddle = None
         #self.score = ScoreTracker()
@@ -108,6 +110,7 @@ class GameState():
             self.current_state = "get_ready"
             self.paddle = Paddle(self, self.all_sprites, self.paddle_sprites)
             self.ball = Ball(self, self.all_sprites, self.ball_sprites)
+            build_level(self)
 
         # get_ready state active
         elif self.current_state == "get_ready":
@@ -115,6 +118,7 @@ class GameState():
                 self.paddle = Paddle(self, self.all_sprites, self.paddle_sprites)
             if not self.ball:
                 self.ball = Ball(self, self.all_sprites, self.ball_sprites)
+            
             self.paddle.update()
             self.ball.update(self, dt)
 
@@ -123,7 +127,7 @@ class GameState():
             self.paddle.update()
             # self.score.update()
             self.ball.update(self, dt)
-            # handle_collisions()
+            handle_collisions()
             # for p in list(self.active_powerup):
             #     p.update(game, dt)
             # self.powerup_sprites.update(game, dt)
@@ -145,6 +149,7 @@ class Paddle(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.image = basic_paddle_surf
         self.rect = self.image.get_frect(center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT - 60))
+        self.mask = pygame.mask.from_surface(self.image)
         
     def update(self):
         mouse_x = pygame.mouse.get_pos()[0]
@@ -161,6 +166,8 @@ class Ball(pygame.sprite.Sprite):
         self.speed = None
         self.speed_multiplier = 1
         self.velocity = None
+        self.mask = pygame.mask.from_surface(self.image)
+        self.previous_rect = self.rect.copy()
 
     def launch(self, game):
         self.stuck = False
@@ -177,6 +184,7 @@ class Ball(pygame.sprite.Sprite):
                 self.launch(game)
         else:# move the ball
             effective_multiplier = min(game.ball.speed_multiplier, 2.5)
+            self.previous_rect = self.rect.copy()
             self.rect.center += self.velocity * effective_multiplier * dt
             if self.rect.top <= play_area.top:
                 self.velocity.y *= -1
@@ -193,9 +201,12 @@ class Ball(pygame.sprite.Sprite):
                 self.kill()
 
 class Brick(pygame.sprite.Sprite):
-    def __init__(self, game, *groups):
+    def __init__(self, game, x, y, *groups):
         super().__init__(*groups)
-        pass
+        self.image = pygame.Surface((80, 27))
+        self.image.fill("white")
+        self.rect = self.image.get_frect(topleft=(x, y))
+        self.mask = pygame.mask.from_surface(self.image)
 
 class ColourBrick(Brick):
     def __init__(self, game, *groups):
@@ -288,16 +299,80 @@ def draw_background():
 def draw_sprites():
     game.all_sprites.draw(window)
 
+def build_level(game):
+    padding = 30.5
+    gap = 3
+    brick_width = 80
+    brick_height = 27
+    for row in range(5):
+        for column in range (14):
+            x = play_area.left + padding + column * (brick_width + gap)
+            y = play_area.top + padding + row * (brick_height + gap)
+            Brick(game, x, y, game.all_sprites, game.brick_sprites) 
+
+
 # -------------------------------------------------------------
 # game functions
 # -------------------------------------------------------------
 
 def handle_collisions():
-    pass
+    if not game.ball:
+        return
+    collision_sprites = pygame.sprite.spritecollide(game.ball, game.brick_sprites, False, pygame.sprite.collide_mask)
+    if collision_sprites:
+        prev = game.ball.previous_rect
+        flipped_x = False
+        flipped_y = False
+        for brick in collision_sprites:
+
+            # ball going right
+            if prev.right <= brick.rect.left:
+                if not flipped_x:
+                    game.ball.rect.right = brick.rect.left
+                    game.ball.velocity.x *= -1
+                    flipped_x = True
+
+            # ball going left
+            elif prev.left >= brick.rect.right:
+                if not flipped_x:
+                    game.ball.rect.left = brick.rect.right
+                    game.ball.velocity.x *= -1
+                    flipped_x = True
+
+            # ball going down
+            elif prev.bottom <= brick.rect.top:
+                if not flipped_y:
+                    game.ball.rect.bottom = brick.rect.top
+                    game.ball.velocity.y *= -1
+                    flipped_y = True
+
+            # ball going up
+            elif prev.top >= brick.rect.bottom:
+                if not flipped_y:
+                    game.ball.rect.top = brick.rect.bottom
+                    game.ball.velocity.y *= -1
+                    flipped_y = True
+
+# Known limitation: perfect corner hits resolve as a vertical-face bounce.
+# Deliberately unhandled - rare and visually acceptable.
+            
+            brick.kill()
+
+    collision_sprites = pygame.sprite.spritecollide(game.ball, game.paddle_sprites, False)
+    if collision_sprites:
+        prev = game.ball.previous_rect
+        for paddle in collision_sprites:
+            if prev.bottom >= paddle.rect.top:
+                if game.ball.velocity.y > 0:
+                    game.ball.rect.bottom = paddle.rect.top
+                    game.ball.velocity.y *= -1
+                    offset = (game.ball.rect.centerx - game.paddle.rect.centerx) / 50
+                    game.ball.velocity = pygame.Vector2(offset, -1)
+                    game.ball.velocity = game.ball.velocity.normalize() * game.ball.speed
 
 def handle_input(event, dt):
     # splash state - any key pressed
-    if event.type == pygame.KEYDOWN and game.current_state == "splash":
+    if event.type == pygame.MOUSEBUTTONDOWN and game.current_state == "splash":
         game.state(dt)
 
     # Q or window close - quit (unless a prior state has intercepted the keypress)
