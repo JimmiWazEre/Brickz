@@ -56,7 +56,7 @@ from modules.assets import init_assets
 init_assets()
 from modules.assets import (
     splash_surf,
-    basic_paddle_surf, ball_surf, crack,
+    basic_paddle_surf, ball_surf, crack, threedee,
     test_level,
     font, font_large,
     game_music
@@ -208,19 +208,28 @@ class Brick(pygame.sprite.Sprite):
         self.rect = self.image.get_frect(topleft=(x, y))
         self.mask = pygame.mask.from_surface(self.image)
 
+
+    def hit(self, by_explosion=False):
+        self.durability -= 1
+        if self.durability <= 0:
+            self.break_brick()
+        else:
+            self.apply_crack()
+
+    def break_brick(self):
+        self.kill()
+        # play break sound
+
 class ColourBrick(Brick):
     def __init__(self, game, x, y, colour, durability, *groups):
         super().__init__(game, x, y, *groups)   # hands position + groups to Brick
         self.image.fill(colour)
+        self.image.blit(threedee, (0, 0))
         self.durability = durability
 
     def apply_crack(self):
         self.image.blit(crack, (0, 0))
         # play crack sound
-
-    def break_brick(self):
-        pass
-        # play break sound
 
 class MetalBrick(Brick):
     def __init__(self, game, *groups):
@@ -232,18 +241,24 @@ class MetalBrick(Brick):
         # play ting sound
         # play ting animation (white wave)
 
-    def break_brick(self):
+    def hit(self):
         pass
+
+    def break_brick(self):
+        self.kill()
         # play break sound
 
 class ExplosiveBrick(Brick):
     def __init__(self, game, *groups):
         super().__init__(*groups)
         pass
-    
-    def explode_brick(self):
+
+    def hit(self):
         pass
-        # play explode sound
+
+    def break_brick(self):
+        self.kill()
+        # play break sound
 
 # particle sprite classes
 
@@ -368,11 +383,7 @@ def handle_collisions():
 # Known limitation: perfect corner hits resolve as a vertical-face bounce.
 # Deliberately unhandled - rare and visually acceptable.
             
-            brick.durability -= 1
-            if brick.durability <= 0:
-                brick.kill()          # later: spawn break particles
-            else:
-                brick.apply_crack()   # only reached when it survived, i.e. dropped to 1
+            brick.hit()
 
     collision_sprites = pygame.sprite.spritecollide(game.ball, game.paddle_sprites, False)
     if collision_sprites:
