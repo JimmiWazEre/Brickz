@@ -56,7 +56,8 @@ from modules.assets import init_assets
 init_assets()
 from modules.assets import (
     splash_surf,
-    basic_paddle_surf, ball_surf,
+    basic_paddle_surf, ball_surf, crack,
+    test_level,
     font, font_large,
     game_music
 )
@@ -204,20 +205,20 @@ class Brick(pygame.sprite.Sprite):
     def __init__(self, game, x, y, *groups):
         super().__init__(*groups)
         self.image = pygame.Surface((80, 27))
-        self.image.fill("white")
         self.rect = self.image.get_frect(topleft=(x, y))
         self.mask = pygame.mask.from_surface(self.image)
 
 class ColourBrick(Brick):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
+    def __init__(self, game, x, y, colour, durability, *groups):
+        super().__init__(game, x, y, *groups)   # hands position + groups to Brick
+        self.image.fill(colour)
+        self.durability = durability
 
-    def apply_crack():
-        pass
+    def apply_crack(self):
+        self.image.blit(crack, (0, 0))
         # play crack sound
 
-    def break_brick():
+    def break_brick(self):
         pass
         # play break sound
 
@@ -226,12 +227,12 @@ class MetalBrick(Brick):
         super().__init__(*groups)
         pass
 
-    def ting():
+    def ting(self):
         pass
         # play ting sound
         # play ting animation (white wave)
 
-    def break_brick():
+    def break_brick(self):
         pass
         # play break sound
 
@@ -240,7 +241,7 @@ class ExplosiveBrick(Brick):
         super().__init__(*groups)
         pass
     
-    def explode_brick():
+    def explode_brick(self):
         pass
         # play explode sound
 
@@ -304,12 +305,23 @@ def build_level(game):
     gap = 3
     brick_width = 80
     brick_height = 27
-    for row in range(5):
+    for row in range(10):
         for column in range (14):
+            pixel = test_level.get_at((column, row))
             x = play_area.left + padding + column * (brick_width + gap)
             y = play_area.top + padding + row * (brick_height + gap)
-            Brick(game, x, y, game.all_sprites, game.brick_sprites) 
-
+            if pixel.a == 0:     
+                continue
+            else:
+                durability = 1 if pixel.a == 255 else 2
+            if pixel[:3] == (255, 255, 255):
+                # metal
+                continue
+            elif pixel[:3] == (0, 0, 0):
+                # explosive
+                continue
+            else:
+                ColourBrick(game, x, y, pixel, durability, game.all_sprites, game.brick_sprites)
 
 # -------------------------------------------------------------
 # game functions
@@ -356,7 +368,11 @@ def handle_collisions():
 # Known limitation: perfect corner hits resolve as a vertical-face bounce.
 # Deliberately unhandled - rare and visually acceptable.
             
-            brick.kill()
+            brick.durability -= 1
+            if brick.durability <= 0:
+                brick.kill()          # later: spawn break particles
+            else:
+                brick.apply_crack()   # only reached when it survived, i.e. dropped to 1
 
     collision_sprites = pygame.sprite.spritecollide(game.ball, game.paddle_sprites, False)
     if collision_sprites:
