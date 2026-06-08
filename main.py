@@ -56,9 +56,11 @@ from modules.assets import init_assets
 init_assets()
 from modules.assets import (
     splash_surf,
-    basic_paddle_surf, ball_surf,
+    basic_paddle_surf, ball_surf, crack, threedee, tnt_surf, metal_surf,
+    test_level,
     font, font_large,
-    game_music
+    game_music,
+    bounce_sound, break_sound, crack_sound, explode_sound, ting_sound
 )
 game_music.play(loops=-1)
 
@@ -77,6 +79,7 @@ class GameState():
         self.ball_sprites = pygame.sprite.Group()
         self.brick_sprites = pygame.sprite.Group()
         self.powerup_sprites = pygame.sprite.Group()
+        self.explosion_sprites = pygame.sprite.Group()
 
         # initialise game state
         self.reset()
@@ -100,6 +103,7 @@ class GameState():
         self.ball_sprites.empty()
         self.powerup_sprites.empty()
         self.brick_sprites.empty()
+        self.explosion_sprites.empty()
         self.ball = None
         self.paddle = None
         #self.score = ScoreTracker()
@@ -204,45 +208,72 @@ class Brick(pygame.sprite.Sprite):
     def __init__(self, game, x, y, *groups):
         super().__init__(*groups)
         self.image = pygame.Surface((80, 27))
-        self.image.fill("white")
         self.rect = self.image.get_frect(topleft=(x, y))
         self.mask = pygame.mask.from_surface(self.image)
+        self.durability = 1
+
+
+    def hit(self, by_explosion=False):
+        self.durability -= 1
+        if self.durability <= 0:
+            self.break_brick()
+        else:
+            self.apply_crack()
+
+    def break_brick(self):
+        self.kill()
+        break_sound.play()
 
 class ColourBrick(Brick):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
+    def __init__(self, game, x, y, colour, durability, *groups):
+        super().__init__(game, x, y, *groups)   # hands position + groups to Brick
+        self.image.fill(colour)
+        self.image.blit(threedee, (0, 0))
+        self.durability = durability
 
-    def apply_crack():
-        pass
-        # play crack sound
-
-    def break_brick():
-        pass
-        # play break sound
+    def apply_crack(self):
+        self.image.blit(crack, (0, 0))
+        crack_sound.play()
 
 class MetalBrick(Brick):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
+    def __init__(self, game, x, y, *groups):
+        super().__init__(game, x, y, *groups)
+        self.durability = None
+        self.image.blit(metal_surf, (0, 0))
+        self.image.blit(threedee, (0, 0))
 
-    def ting():
-        pass
-        # play ting sound
+    def ting(self):
+        ting_sound.play()
         # play ting animation (white wave)
 
-    def break_brick():
-        pass
-        # play break sound
+    def hit(self, by_explosion=False):
+        if by_explosion:
+            self.break_brick()
+        else:
+            self.ting()
+
+    def break_brick(self):
+        self.kill()
+        break_sound.play()
 
 class ExplosiveBrick(Brick):
-    def __init__(self, game, *groups):
+    def __init__(self, game, x, y, *groups):
+        super().__init__(game, x, y, *groups)
+        self.image.blit(tnt_surf, (0, 0))
+        self.image.blit(threedee, (0, 0))
+
+    def break_brick(self):
+        self.kill()
+        ExplodeBrick(game, self.rect.center, game.explosion_sprites)
+
+class ExplodeBrick(pygame.sprite.Sprite):
+    def __init__(self, game, center, *groups):
         super().__init__(*groups)
-        pass
-    
-    def explode_brick():
-        pass
-        # play explode sound
+        blast_w = 80 * 1.5
+        blast_h = 27 * 1.5
+        self.rect = pygame.FRect(0, 0, blast_w, blast_h)
+        self.rect.center = center
+        explode_sound.play()
 
 # particle sprite classes
 
@@ -304,12 +335,23 @@ def build_level(game):
     gap = 3
     brick_width = 80
     brick_height = 27
-    for row in range(5):
+    for row in range(10):
         for column in range (14):
+            pixel = test_level.get_at((column, row))
             x = play_area.left + padding + column * (brick_width + gap)
             y = play_area.top + padding + row * (brick_height + gap)
-            Brick(game, x, y, game.all_sprites, game.brick_sprites) 
-
+            if pixel.a == 0:     
+                continue
+            else:
+                durability = 1 if pixel.a == 255 else 2
+            if pixel[:3] == (255, 255, 255):
+                # metal
+                MetalBrick(game, x, y, game.all_sprites, game.brick_sprites)
+            elif pixel[:3] == (0, 0, 0):
+                # explosive
+                ExplosiveBrick(game, x, y, game.all_sprites, game.brick_sprites)
+            else:
+                ColourBrick(game, x, y, pixel, durability, game.all_sprites, game.brick_sprites)
 
 # -------------------------------------------------------------
 # game functions
@@ -356,7 +398,14 @@ def handle_collisions():
 # Known limitation: perfect corner hits resolve as a vertical-face bounce.
 # Deliberately unhandled - rare and visually acceptable.
             
-            brick.kill()
+            brick.hit()
+
+    current = list(game.explosion_sprites)        # snapshot of this frame's explosions
+    for explosion in current:
+        hit_bricks = pygame.sprite.spritecollide(explosion, game.brick_sprites, False)
+        for brick in hit_bricks:
+            brick.hit(by_explosion=True)
+        explosion.kill()                            # remove only the processed ones
 
     collision_sprites = pygame.sprite.spritecollide(game.ball, game.paddle_sprites, False)
     if collision_sprites:
@@ -369,6 +418,7 @@ def handle_collisions():
                     offset = (game.ball.rect.centerx - game.paddle.rect.centerx) / 50
                     game.ball.velocity = pygame.Vector2(offset, -1)
                     game.ball.velocity = game.ball.velocity.normalize() * game.ball.speed
+                    bounce_sound.play()
 
 def handle_input(event, dt):
     # splash state - any key pressed
