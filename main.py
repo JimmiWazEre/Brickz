@@ -180,6 +180,7 @@ class Ball(pygame.sprite.Sprite):
         offset = (game.ball.rect.centerx - game.paddle.rect.centerx) / 50
         self.velocity = pygame.Vector2(offset, -1)
         self.velocity = self.velocity.normalize() * self.speed
+        bounce_sound.play()
 
     def update(self, game, dt):
         if self.stuck:
