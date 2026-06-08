@@ -194,12 +194,15 @@ class Ball(pygame.sprite.Sprite):
             if self.rect.top <= play_area.top:
                 self.velocity.y *= -1
                 self.rect.top = play_area.top
+                bounce_sound.play()
             elif self.rect.left <= play_area.left:
                 self.velocity.x *= -1
                 self.rect.left = play_area.left
+                bounce_sound.play()
             elif self.rect.right >= play_area.right:
                 self.velocity.x *= -1
                 self.rect.right = play_area.right
+                bounce_sound.play()
             elif self.rect.bottom >= play_area.bottom:
                 game.current_state = "get_ready"
                 game.ball = None
@@ -396,8 +399,14 @@ def handle_collisions():
                     game.ball.velocity.y *= -1
                     flipped_y = True
 
-# Known limitation: perfect corner hits resolve as a vertical-face bounce.
-# Deliberately unhandled - rare and visually acceptable.
+            # corner hits
+            else:
+                if not flipped_x:
+                    game.ball.velocity.x *= -1
+                    flipped_x = True
+                if not flipped_y:
+                    game.ball.velocity.y *= -1
+                    flipped_y = True
             
             brick.hit()
 
