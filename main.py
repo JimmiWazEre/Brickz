@@ -1,7 +1,7 @@
 """
 
 =============================================================
-Brickz
+VECTOR:BREAK
 =============================================================
 
 
@@ -49,7 +49,7 @@ from modules.leaderboard import load_scores, insert_high_score, display_leaderbo
 pygame.init()
 WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 720
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), vsync=1)
-pygame.display.set_caption("Brickz")
+pygame.display.set_caption("VECTOR:BREAK")
 
 # assets
 from modules.assets import init_assets
