@@ -35,6 +35,8 @@ basic_paddle_surf = None
 ball_surf = None
 crack = None
 threedee = None
+tnt_surf = None
+metal_surf = None
 
 # levels
 test_level = None
@@ -45,6 +47,11 @@ font_large = None
 
 # sounds
 game_music = None
+bounce_sound = None
+break_sound = None
+crack_sound = None
+explode_sound = None
+ting_sound = None
 
 # -------------------------------------------------------------
 # init
@@ -61,10 +68,11 @@ def make_powerup_surf(colour, label):
 
 def init_assets():
     global splash_surf
-    global basic_paddle_surf, ball_surf, crack, threedee
+    global basic_paddle_surf, ball_surf, crack, threedee, tnt_surf, metal_surf
     global test_level
     global font, font_large
     global game_music
+    global bounce_sound, break_sound, crack_sound, explode_sound, ting_sound
 
     # fonts
     font = pygame.font.Font(join(ASSETS_DIR, "PressStart2P-Regular.ttf"), 20)
@@ -76,11 +84,29 @@ def init_assets():
     ball_surf = pygame.transform.scale_by(pygame.image.load(join(ASSETS_DIR, "images", "ball.png")).convert_alpha(), 1.5)
     crack = pygame.image.load(join(ASSETS_DIR, "images", "cracked_brick.png")).convert_alpha()
     threedee = pygame.image.load(join(ASSETS_DIR, "images", "3d_brick.png")).convert_alpha()
+    tnt_surf = pygame.image.load(join(ASSETS_DIR, "images", "tnt_brick.png")).convert()
+    metal_surf = pygame.image.load(join(ASSETS_DIR, "images", "metal_brick.png")).convert()
 
     # levels
     test_level = pygame.image.load(join(ASSETS_DIR, "images", "levels", "test.png")).convert_alpha()
 
     # sounds
+    bounce_sound = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "bounce.ogg"))
+    bounce_sound.set_volume(0.3)
+
+    break_sound = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "break.ogg"))
+    break_sound.set_volume(0.3)
+
+    crack_sound = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "crack.ogg"))
+    crack_sound.set_volume(0.3)
+
+    explode_sound = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "explode.wav"))
+    explode_sound.set_volume(0.3)
+
+    ting_sound = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "ting.ogg"))
+    ting_sound.set_volume(0.3)
+
+    # music
+
     game_music = pygame.mixer.Sound(join(ASSETS_DIR, "audio", "midnight_drive.ogg"))
     game_music.set_volume(0.2)
-    #game_music.play(loops=-1)
