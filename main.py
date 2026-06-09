@@ -78,8 +78,10 @@ class GameState():
         self.paddle_sprites = pygame.sprite.Group()
         self.ball_sprites = pygame.sprite.Group()
         self.brick_sprites = pygame.sprite.Group()
+        self.destructible_brick_sprites = pygame.sprite.Group()
         self.powerup_sprites = pygame.sprite.Group()
         self.explosion_sprites = pygame.sprite.Group()
+        self.particle_sprites = pygame.sprite.Group()
 
         # initialise game state
         self.reset()
@@ -103,7 +105,9 @@ class GameState():
         self.ball_sprites.empty()
         self.powerup_sprites.empty()
         self.brick_sprites.empty()
+        self.destructible_brick_sprites.empty()
         self.explosion_sprites.empty()
+        self.particle_sprites.empty()
         self.ball = None
         self.paddle = None
         #self.score = ScoreTracker()
@@ -131,11 +135,19 @@ class GameState():
             self.paddle.update()
             # self.score.update()
             self.ball.update(self, dt)
+            self.particle_sprites.update(dt)
             handle_collisions()
             # for p in list(self.active_powerup):
             #     p.update(game, dt)
             # self.powerup_sprites.update(game, dt)
             pass
+
+        elif self.current_state == "level_complete":
+            prompt_surf = font.render("Level Complete", True, (240, 240, 240))
+            prompt_rect = prompt_surf.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
+            show_prompt = (pygame.time.get_ticks() // 500) % 2 == 0
+            if show_prompt:
+                window.blit(prompt_surf, prompt_rect)
 
         # game_over state active
         elif self.current_state == "game_over":
@@ -216,13 +228,14 @@ class Brick(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.durability = 1
 
-
     def hit(self, by_explosion=False):
         self.durability -= 1
         if self.durability <= 0:
             self.break_brick()
         else:
             self.apply_crack()
+            for _ in range(15):
+                ImpactParticle(game, self.rect.center, game.particle_sprites)
 
     def break_brick(self):
         self.kill()
@@ -234,10 +247,17 @@ class ColourBrick(Brick):
         self.image.fill(colour)
         self.image.blit(threedee, (0, 0))
         self.durability = durability
+        self.colour = colour
 
     def apply_crack(self):
         self.image.blit(crack, (0, 0))
         crack_sound.play()
+
+    def break_brick(self):
+        self.kill()
+        break_sound.play()
+        for _ in range(30):
+            BreakParticle(game, self.rect.center, self.colour, game.particle_sprites)
 
 class MetalBrick(Brick):
     def __init__(self, game, x, y, *groups):
@@ -259,6 +279,8 @@ class MetalBrick(Brick):
     def break_brick(self):
         self.kill()
         break_sound.play()
+        for _ in range(30):
+            BreakParticle(game, self.rect.center, "white", game.particle_sprites)
 
 class ExplosiveBrick(Brick):
     def __init__(self, game, x, y, *groups):
@@ -269,6 +291,8 @@ class ExplosiveBrick(Brick):
     def break_brick(self):
         self.kill()
         ExplodeBrick(game, self.rect.center, game.explosion_sprites)
+        for _ in range(60):
+            ExplodeParticle(game, self.rect.center, game.particle_sprites)
 
 class ExplodeBrick(pygame.sprite.Sprite):
     def __init__(self, game, center, *groups):
@@ -284,32 +308,75 @@ class ExplodeBrick(pygame.sprite.Sprite):
 class Particle(pygame.sprite.Sprite):
     def __init__(self, game, *groups):
         super().__init__(*groups)
-        pass
+        self.COLOURS = [
+        (77, 0, 76), (143, 0, 118), (199, 0, 131), (245, 0, 120),
+        (255, 71, 100), (255, 147, 147), (255, 213, 204), (255, 243, 240),
+        (147, 255, 248), (71, 237, 255), (0, 187, 255), (0, 139, 245),
+        (0, 80, 199), (0, 34, 143), (0, 7, 105), (0, 2, 33)
+        ]
 
 class ImpactParticle(Particle):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
-        # only for when brick transforms to cracked
-        # colour palette based upon parent brick
-        # small impact point puff
+    def __init__(self, game, pos, *groups):
+        super().__init__(game, *groups)
+        self.image = pygame.Surface((randint(2,3), randint(2,3)), pygame.SRCALPHA)
+        self.image.fill("white")
+        self.rect = self.image.get_frect(center=pos)
+        self.start_time = pygame.time.get_ticks()
+        self.lifetime = randint(150, 500)
+        self.direction = pygame.Vector2(uniform(-1, 1), 2)
+        self.speed = randint(100, 200)
+        self.velocity = pygame.Vector2(uniform(-1, 1), uniform(-1, 1)).normalize() * self.speed
+        self.gravity_constant = 15
+
+    def update(self, dt):
+        self.velocity.y += self.gravity_constant
+        self.rect.center += self.velocity * dt
+        remaining = 1 - (pygame.time.get_ticks() - self.start_time) / self.lifetime
+        self.image.set_alpha(int(255 * remaining))
+        if remaining <= 0:
+            self.kill()
 
 class ExplodeParticle(Particle):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
-        # only for explosive bricks
-        # red/orange colour palette
-        # big explosion, centrally sourced
+    def __init__(self, game, pos, *groups):
+        super().__init__(game, *groups)
+        self.image = pygame.Surface((randint(2,4), randint(2,4)), pygame.SRCALPHA)
+        self.image.fill(choice(self.COLOURS))
+        self.rect = self.image.get_frect(center=pos)
+        self.start_time = pygame.time.get_ticks()
+        self.lifetime = randint(150, 900)
+        self.direction = pygame.Vector2(uniform(-1, 1), 2)
+        self.speed = randint(100, 400)
+        self.velocity = pygame.Vector2(uniform(-1, 1), uniform(-1, 1)).normalize() * self.speed
+        self.gravity_constant = 10
+
+    def update(self, dt):
+        self.velocity.y += self.gravity_constant
+        self.rect.center += self.velocity * dt
+        remaining = 1 - (pygame.time.get_ticks() - self.start_time) / self.lifetime
+        self.image.set_alpha(int(255 * remaining))
+        if remaining <= 0:
+            self.kill()
 
 class BreakParticle(Particle):
-    def __init__(self, game, *groups):
-        super().__init__(*groups)
-        pass
-        # only coloured bricks and metal bricks
-        # larger particles
-        # colour palette based upon parent brick
-        # TBC origin source
+    def __init__(self, game, pos, colour, *groups):
+        super().__init__(game, *groups)
+        self.image = pygame.Surface((randint(2,4), randint(2,4)), pygame.SRCALPHA)
+        self.image.fill(colour)
+        self.rect = self.image.get_frect(center=pos)
+        self.start_time = pygame.time.get_ticks()
+        self.lifetime = randint(150, 500)
+        self.direction = pygame.Vector2(uniform(-1, 1), 2)
+        self.speed = randint(100, 200)
+        self.velocity = pygame.Vector2(uniform(-1, 1), uniform(-1, 1)).normalize() * self.speed
+        self.gravity_constant = 10
+
+    def update(self, dt):
+        self.velocity.y += self.gravity_constant
+        self.rect.center += self.velocity * dt
+        remaining = 1 - (pygame.time.get_ticks() - self.start_time) / self.lifetime
+        self.image.set_alpha(int(255 * remaining))
+        if remaining <= 0:
+            self.kill()
 
 # -------------------------------------------------------------
 # draw functions
@@ -333,6 +400,7 @@ def draw_background():
 
 def draw_sprites():
     game.all_sprites.draw(window)
+    game.particle_sprites.draw(window)
 
 def build_level(game):
     padding = 30.5
@@ -353,9 +421,9 @@ def build_level(game):
                 MetalBrick(game, x, y, game.all_sprites, game.brick_sprites)
             elif pixel[:3] == (0, 0, 0):
                 # explosive
-                ExplosiveBrick(game, x, y, game.all_sprites, game.brick_sprites)
+                ExplosiveBrick(game, x, y, game.all_sprites, game.brick_sprites, game.destructible_brick_sprites)
             else:
-                ColourBrick(game, x, y, pixel, durability, game.all_sprites, game.brick_sprites)
+                ColourBrick(game, x, y, pixel, durability, game.all_sprites, game.brick_sprites, game.destructible_brick_sprites)
 
 # -------------------------------------------------------------
 # game functions
@@ -372,28 +440,28 @@ def handle_collisions():
         for brick in collision_sprites:
 
             # ball going right
-            if prev.right <= brick.rect.left:
+            if prev.right <= brick.rect.left and prev.bottom > brick.rect.top and prev.top < brick.rect.bottom:
                 if not flipped_x:
                     game.ball.rect.right = brick.rect.left
                     game.ball.velocity.x *= -1
                     flipped_x = True
 
             # ball going left
-            elif prev.left >= brick.rect.right:
+            elif prev.left >= brick.rect.right and prev.bottom > brick.rect.top and prev.top < brick.rect.bottom:
                 if not flipped_x:
                     game.ball.rect.left = brick.rect.right
                     game.ball.velocity.x *= -1
                     flipped_x = True
 
             # ball going down
-            elif prev.bottom <= brick.rect.top:
+            elif prev.bottom <= brick.rect.top and prev.right > brick.rect.left and prev.left < brick.rect.right:
                 if not flipped_y:
                     game.ball.rect.bottom = brick.rect.top
                     game.ball.velocity.y *= -1
                     flipped_y = True
 
             # ball going up
-            elif prev.top >= brick.rect.bottom:
+            elif prev.top >= brick.rect.bottom and prev.right > brick.rect.left and prev.left < brick.rect.right:
                 if not flipped_y:
                     game.ball.rect.top = brick.rect.bottom
                     game.ball.velocity.y *= -1
@@ -429,6 +497,9 @@ def handle_collisions():
                     game.ball.velocity = pygame.Vector2(offset, -1)
                     game.ball.velocity = game.ball.velocity.normalize() * game.ball.speed
                     bounce_sound.play()
+
+    if not game.destructible_brick_sprites:
+        game.current_state = "level_complete"
 
 def handle_input(event, dt):
     # splash state - any key pressed
@@ -493,6 +564,10 @@ while game.app_running:
     elif game.current_state == "paused":
         draw_background()
         draw_sprites()
+    elif game.current_state == "level_complete":
+        draw_background()
+        draw_sprites()
+        game.state(dt)
     elif game.current_state == "game_over":
         game.state(dt)
 
