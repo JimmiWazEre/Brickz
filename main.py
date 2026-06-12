@@ -188,7 +188,7 @@ class Ball(pygame.sprite.Sprite):
     def launch(self, game):
         self.stuck = False
         game.current_state = "in_play"
-        self.speed = 500
+        self.speed = 700
         offset = (game.ball.rect.centerx - game.paddle.rect.centerx) / 50
         self.velocity = pygame.Vector2(offset, -1)
         self.velocity = self.velocity.normalize() * self.speed
@@ -291,7 +291,7 @@ class ExplosiveBrick(Brick):
     def break_brick(self):
         self.kill()
         ExplodeBrick(game, self.rect.center, game.explosion_sprites)
-        for _ in range(60):
+        for _ in range(150):
             ExplodeParticle(game, self.rect.center, game.particle_sprites)
 
 class ExplodeBrick(pygame.sprite.Sprite):
